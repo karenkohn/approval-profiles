@@ -1,6 +1,6 @@
-# approval-profiles
-Scripts for processing our approval profiles from ProQuest/Coutts.
-They create a structured table and merge all the profiles into one table.
+# Scripts for Reformatting and Merging Approval Profiles
+
+These scripts read a profile from a csv file, tweak the structure, and merge all the profiles into one table.
 
 The first script is for the subject parameters (i.e. the call numbers). It interprets the hierarchy of call numbers so
 that it becomes possible to look at an individual line of the profile and understand where that call number fits in the hierarchy.
