@@ -1,14 +1,15 @@
 library(tidyr)
 library(zoo)
 
-rm(list=ls())
-profile.raw <- read.csv("S://Main Campus/Collection Development/Coutts Profiles/R processing project/TEbcp Biology Chemistry Physics.csv", stringsAsFactors = FALSE)
+rm(list=ls()) # The script is run over & over to import and merge each profile, so it begins with removing the objects created the previous time.
+profile.raw <- read.csv("[filename].csv", stringsAsFactors = FALSE)
 
+#Identify the line that contains the profile name and make this its own object. It will become a value in a new column later.
 prof.name <- profile.raw[which(grepl("Profile: ",profile.raw[,1])==TRUE),1]
 split.prof.name <- unlist(strsplit(prof.name,":"))
 profile <- sub("^\\s+","",(split.prof.name[[3]]))
 
-#Add the headers, remove empty columns, truncate table at the first blank row.
+#Add the headers, remove empty columns
 header.row <- which(profile.raw == "Description")
 profile.raw[header.row,]  #This lists the row that has the headers
 classes <- grep("^CLASS",profile.raw[,1])
@@ -16,18 +17,19 @@ classes <- grep("^CLASS",profile.raw[,1])
 profile.w.headers <- profile.raw[classes[[1]]:nrow(profile.raw),]
 colnames(profile.w.headers) <- profile.raw[header.row,]
 
-#Subject parameters may end with a blank row
+#Subject parameters may end with a blank row. Truncate table at the first blank row.
 blank.row <- which(profile.w.headers$Description=="")
 if (length(blank.row)>0) {
 profile.w.headers <- profile.w.headers[1:blank.row[[1]]-1,] # This only works if there is a blank row
 }
 
-#Identifies rows that just say Class Q, etc.
+#Identifies rows that just say Class Q, etc. and removes them.
 classes <- grep("^CLASS",profile.w.headers[,1])
 profile.w.headers <- profile.w.headers[-classes,]
 
-#May introduce a new non-subject parameter after
-non.subj <- grep("^[A-Za-z]",profile.w.headers[,1])
+#May introduce a new non-subject parameter immediately at the end of the call number table, without an intervening blank row.
+#Identify the first row of a new parameter and truncate the table at this row.
+non.subj <- grep("^[A-Za-z]",profile.w.headers[,1]) #All the call numbers start with a space. The first row that starts with a non-space character is the beginning of a new part of the profile.
 
    if (length(non.subj)>0) {
       profile.w.headers <- profile.w.headers[1:non.subj[[1]]-1,]
@@ -36,7 +38,7 @@ non.subj <- grep("^[A-Za-z]",profile.w.headers[,1])
 #clean up columns
 to.keep <- c(which(names(profile.w.headers)=="Description"),which(names(profile.w.headers)=="Books"),which(names(profile.w.headers)=="Slips"),which(names(profile.w.headers)=="Exclude"),which(names(profile.w.headers)=="Routing"))
 profile.cleaner <- profile.w.headers[,to.keep]
-profile.cleaner$Profile <- profile
+profile.cleaner$Profile <- profile #add the profile name into its own column
 
 #Start to divide the hierarchy of sub-classes
 level1 <- grep("^    [A-Z]",profile.cleaner[,1])
@@ -68,6 +70,7 @@ level13 <- grep("^                                        [A-Z]",profile.cleaner
 sofar <- sort(c(level1,level2,level3,level4,level5,level6,level7,level8,level9,level10,level11,level12,level13))  #This is for testing that you've got all the levels.
 missing <- profile.cleaner[-(sofar),1]
 
+#Create a blank column called Levels and import the level numbers into that column.
 profile.levels <- profile.cleaner
 profile.levels$Level <-""
 colnames(profile.levels) <- c(colnames(profile.cleaner),"Levels")
@@ -86,6 +89,7 @@ profile.levels[level11,]$Levels <- "11"
 profile.levels[level12,]$Levels <- "12"
 profile.levels[level13,]$Levels <- "13"
 
+#We're going to spread out the subject parameters (call number ranges) horizontally so that each line can display the full hierarchy for that parameter.
 profile.levels$Description.1 <- ""
 profile.levels$Description.2 <- ""
 profile.levels$Description.3 <- ""
@@ -102,7 +106,7 @@ profile.levels$Description.13 <- ""
 
 #colnames(profile.levels)[8:20] <- c("Description.1","Description.2","Description.3","Description.4","Description.5","Description.6","Description.7","Description.8","Description.9","Description.10","Description.11","Description.12","Description.13")
 
-#trim the Description column
+#trim the Description column. We don't need all those spaces anymore.
 
 profile.levels$Description <- sub("^\\s+","",profile.levels$Description)
 
@@ -135,7 +139,7 @@ profile.levels[which(profile.levels$Levels=="13"),'Description.13'] <- profile.l
 profile.levels[which(profile.levels$Levels!="13"),'Description.13'] <- NA
 #View(profile.levels)
 
-#Fill down
+#Fill down. This command uses the library called "zoo".
 profile.filled <- profile.levels
 profile.filled$`Description.1` <- na.locf(profile.levels$`Description.1`)
 profile.filled$`Description.2` <- na.locf(profile.levels$`Description.2`,na.rm=FALSE)
@@ -182,8 +186,8 @@ if (length(DDA) >0) {
   }
 
 # read in the CSV file that holds all the profiles merged so far
-allprofiles <- read.csv(file="S://Main Campus/Collection Development/Coutts Profiles/R processing project/all subject params.csv")
-allprofiles <- allprofiles[,-1] #it imports with a numbered column at the beginning
+allprofiles <- read.csv(file="[filename].csv")
+allprofiles <- allprofiles[,-1] #it imports with a numbered column at the beginning. Remove this.
 
 #append the new profile
 allprofiles <- rbind(profile.done,allprofiles)
@@ -191,4 +195,4 @@ allprofiles <- rbind(profile.done,allprofiles)
 profiles.so.far <- sort(unique(allprofiles$Profile))
 View(profiles.so.far)
 
-write.csv(file="S://Main Campus/Collection Development/Coutts Profiles/R processing project/all subject params.csv",allprofiles)
+write.csv(file="[same filename we read in.csv",allprofiles)
